@@ -172,6 +172,22 @@ nav button.on svg{stroke:var(--ink);background:var(--butter);border-radius:12px;
 .badge{font-size:13px;font-weight:800;padding:8px 12px;border-radius:14px;margin-bottom:8px;border:2px solid var(--hard);background:var(--warn-bg);color:var(--warn)}
 .badge.ok{background:var(--ok-bg);color:var(--ok)}
 
+[hidden]{display:none!important}
+.presetbar{display:flex;gap:8px;overflow-x:auto;margin:0 -16px 14px;padding:2px 16px 4px;scrollbar-width:none}
+.presetbar::-webkit-scrollbar{display:none}
+.pchip{flex:none;display:flex;align-items:center;gap:6px;border:2px dashed var(--hard);background:var(--card);border-radius:999px;padding:6px 12px;font-size:14px;font-weight:800;white-space:nowrap}
+.pchip .dot{width:10px;height:10px;border-width:1.5px}
+.pchip small{font-size:12px;color:var(--soft)}
+.pchip.on{border-style:solid;background:var(--butter)}
+.field select{flex:1;min-width:0;border:0;background:none;outline:none;padding:12px 0;font-size:16px;-webkit-appearance:none;appearance:none}
+.item{display:flex;align-items:center;gap:10px;width:100%;border:0;border-bottom:2px dashed var(--line);background:none;padding:11px 2px;text-align:left}
+.item:last-child{border-bottom:0}
+.item .txt{flex:1;min-width:0}
+.item .txt b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .txt small{display:block;font-size:12px;color:var(--soft)}
+.textlink{display:block;margin:12px auto 0;border:0;background:none;color:var(--soft);font-weight:800;font-size:14px;text-decoration:underline;text-underline-offset:3px}
+.sched{font-size:13px;color:var(--soft);margin:10px 0 0;font-weight:700}
+.rec{font-size:11px;color:var(--soft)}
 .toast{position:fixed;left:50%;bottom:calc(160px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) scale(.9);
   background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:14px;font-weight:800;opacity:0;pointer-events:none;
   transition:opacity .18s,transform .18s;z-index:30;white-space:nowrap}
@@ -202,6 +218,18 @@ nav button.on svg{stroke:var(--ink);background:var(--butter);border-radius:12px;
         <p class="note">分類ごとの予算は下の各分類で設定できます。空欄なら予算なしとして扱います。</p>
       </div>
       <div class="card">
+        <h2>固定費（自動で記録）</h2>
+        <div id="recurList"></div>
+        <button class="ghost" id="addRecur">＋ 固定費を追加</button>
+        <p class="note">家賃やサブスクなど。設定した日になると、アプリを開いたときに自動で記録されます。</p>
+      </div>
+      <div class="card">
+        <h2>よく使う項目</h2>
+        <div id="presetList"></div>
+        <button class="ghost" id="addPreset">＋ よく使う項目を追加</button>
+        <p class="note">記録画面の上に並び、タップすると金額・分類・メモがまとめて入ります。記録画面の「この内容をよく使う項目に登録」からも追加できます。</p>
+      </div>
+      <div class="card">
         <h2>分類</h2>
         <div id="catEditor"></div>
         <div class="addrow"><input id="newCat" placeholder="新しい大分類" maxlength="12"><button id="addCat">追加</button></div>
@@ -212,9 +240,9 @@ nav button.on svg{stroke:var(--ink);background:var(--butter);border-radius:12px;
         <button class="ghost" id="exportJson">バックアップを書き出す（JSON）</button>
         <button class="ghost" id="exportCsvMonth">表示中の月をCSVで書き出す</button>
         <button class="ghost" id="exportCsvAll">すべてをCSVで書き出す</button>
-        <button class="ghost" id="importBtn">バックアップを読み込む</button>
-        <input type="file" id="importFile" accept=".json,application/json" hidden>
-        <p class="note">共有メニューで「"ファイル"に保存」を選ぶとiCloud Driveに保存できます。CSVはNumbersやExcelで開けます。</p>
+        <button class="ghost" id="importBtn">読み込む（バックアップ・CSV）</button>
+        <input type="file" id="importFile" accept=".json,.csv,application/json,text/csv" hidden>
+        <p class="note">共有メニューで「"ファイル"に保存」を選ぶとiCloud Driveに保存できます。CSVはNumbersやExcelで開けます。このアプリで書き出したCSVは読み込みもでき、すでにある記録と同じものは重複しないように飛ばします。</p>
       </div>
       <div class="card">
         <h2>データの削除</h2>
@@ -236,13 +264,23 @@ nav button.on svg{stroke:var(--ink);background:var(--butter);border-radius:12px;
 <div class="overlay" id="overlay">
   <div class="sheet">
     <div class="sheethead"><h2 id="sheetTitle">支出を記録</h2><button class="round" id="closeSheet" aria-label="閉じる">✕</button></div>
+    <div class="presetbar" id="presetBar"></div>
+    <div class="field" id="fNameRow"><label>名前</label><input type="text" id="fName" placeholder="例：Suicaチャージ" maxlength="20"></div>
     <div class="amountbox"><span>¥</span><input id="fAmount" class="num" inputmode="numeric" placeholder="0" aria-label="金額"></div>
     <p class="label">大分類</p><div class="chips" id="fCats"></div>
     <p class="label" id="fSubLabel">中分類</p><div class="chips" id="fSubs"></div>
-    <div class="field"><label>日付</label><input type="date" id="fDate"></div>
+    <div class="field" id="fDateRow"><label>日付</label><input type="date" id="fDate"></div>
+    <div id="recurFields">
+      <div class="field"><label>頻度</label><select id="fFreq">
+        <option value="m1">毎月</option><option value="m2">2か月ごと</option><option value="m3">3か月ごと</option>
+        <option value="m6">半年ごと</option><option value="m12">毎年</option><option value="w1">毎週</option>
+      </select></div>
+      <div class="field"><label>次回</label><input type="date" id="fNext"></div>
+    </div>
     <div class="field"><label>メモ</label><input type="text" id="fMemo" placeholder="なくてもOK" maxlength="40"></div>
     <button class="primary" id="fSave">記録する</button>
     <button class="ghost danger" id="fDelete" hidden>この記録を削除</button>
+    <button class="textlink" id="fAsPreset">この内容をよく使う項目に登録</button>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -280,7 +318,8 @@ nav button.on svg{stroke:var(--ink);background:var(--butter);border-radius:12px;
   }
 
   // ---------- storage ----------
-  let S = { entries:[], cats:[], budget:0, lastBackup:null };
+  let S = { entries:[], cats:[], budget:0, lastBackup:null, presets:[], recurring:[] };
+  function normalize(){ if(!Array.isArray(S.presets)) S.presets=[]; if(!Array.isArray(S.recurring)) S.recurring=[]; }
   function save(){
     try{ localStorage.setItem(KEY, JSON.stringify(S)); return true; }
     catch(e){ toast('保存できませんでした'); return false; }
@@ -330,6 +369,40 @@ nav button.on svg{stroke:var(--ink);background:var(--butter);border-radius:12px;
     if(b){ cur.setMonth(cur.getMonth() + Number(b.dataset.month)); render(); }
   });
 
+  // ---------- recurring ----------
+  const FREQ_LABEL = { m1:'毎月', m2:'2か月ごと', m3:'3か月ごと', m6:'半年ごと', m12:'毎年', w1:'毎週' };
+  const dstr = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  // 次の日付を計算（31日指定は月末に合わせる）
+  function advance(r, from){
+    const d = new Date(from+'T00:00:00');
+    if(r.freq==='w1'){ d.setDate(d.getDate()+7); return dstr(d); }
+    const n = Number(r.freq.slice(1)) || 1;
+    const t = new Date(d.getFullYear(), d.getMonth()+n, 1);
+    const last = new Date(t.getFullYear(), t.getMonth()+1, 0).getDate();
+    t.setDate(Math.min(r.day || d.getDate(), last));
+    return dstr(t);
+  }
+  function countDue(r, upto){ let n=0, d=r.next; while(d<=upto && n<500){ n++; d=advance(r,d); } return n; }
+  function runRecurring(){
+    const today = todayStr(); let n = 0;
+    S.recurring.forEach(r => {
+      let guard = 0;
+      while(r.next && r.next <= today && guard++ < 500){
+        S.entries.push({ id:uid(), date:r.next, amount:r.amount, catId:r.catId, subId:r.subId, memo:r.memo || r.name, recurId:r.id, createdAt:new Date().toISOString() });
+        r.next = advance(r, r.next); n++;
+      }
+    });
+    if(n){ save(); toast(`固定費を${n}件記録しました`); }
+    return n;
+  }
+  // 表示中の月で、まだ記録されていない固定費の合計（今日より後）
+  function scheduledThisMonth(){
+    const end = dstr(new Date(cur.getFullYear(), cur.getMonth()+1, 0)), today = todayStr();
+    let sum = 0;
+    S.recurring.forEach(r => { let d=r.next, g=0; while(d && d<=end && g++<60){ if(d>today && d.startsWith(ym())) sum+=r.amount; d=advance(r,d); } });
+    return sum;
+  }
+
   // ---------- home ----------
   const openCats = new Set();
   function renderHome(){
@@ -368,11 +441,13 @@ nav button.on svg{stroke:var(--ink);background:var(--butter);border-radius:12px;
         : `<small>予算オーバー</small><div class="big num over">${yen(-remain)}</div><div class="sub num">予算 ${yen(budget)}</div>`;
       const now = new Date(), daysIn = new Date(cur.getFullYear(), cur.getMonth()+1, 0).getDate();
       const left = daysIn - now.getDate() + 1;
+      const sched = isNow ? scheduledThisMonth() : 0;
+      const free = remain - sched;
       stats = `<div class="stats">
         <div class="stat"><small>使った</small><b class="num">${yen(spent)}</b></div>
         <div class="stat"><small>${isNow ? '1日あたり使える' : '予算の消化率'}</small><b class="num ${remain<0?'over':''}">${
-          isNow ? (remain>0 ? yen(Math.floor(remain/left)) : '¥0') : Math.round(spent/budget*100)+'%'}</b></div>
-      </div>`;
+          isNow ? (free>0 ? yen(Math.floor(free/left)) : '¥0') : Math.round(spent/budget*100)+'%'}</b></div>
+      </div>${sched ? `<p class="sched">このあと固定費 ${yen(sched)} の予定（1日あたりの額から差し引き済み）</p>` : ''}`;
     }else{
       center = `<small>使った</small><div class="big num">${yen(spent)}</div>`;
       stats = `<p class="hint">予算を決めると、のこり金額がわかります<br><button class="linkbtn" data-goto="set">予算を設定する</button></p>`;
@@ -441,29 +516,58 @@ nav button.on svg{stroke:var(--ink);background:var(--butter);border-radius:12px;
           const c = catOf(e.catId), s = subOf(c, e.subId);
           return `<button class="row" data-id="${e.id}">
             <span class="pill" style="background:${c.color};color:${textOn(c.color)}">${esc(c.name)}</span>
-            <span class="txt"><b>${esc(s ? s.name : (e.memo || c.name))}</b>${s && e.memo ? `<small>${esc(e.memo)}</small>` : ''}</span>
+            <span class="txt"><b>${esc(s ? s.name : (e.memo || c.name))}</b>${(s && e.memo) || e.recurId ? `<small>${e.recurId ? '<span class="rec">↻ 固定費</span> ' : ''}${s ? esc(e.memo) : ''}</small>` : ''}</span>
             <span class="num">${yen(e.amount)}</span></button>`;
         }).join('')}</div></div>`;
     }).join('');
   }
-  $('#history').addEventListener('click', e => { const r=e.target.closest('.row'); if(r) openSheet(r.dataset.id); });
+  $('#history').addEventListener('click', e => { const r=e.target.closest('.row'); if(r) openSheet('entry', S.entries.find(x=>x.id===r.dataset.id)); });
 
   // ---------- entry sheet ----------
-  let editing = null, fCat = null, fSub = null;
-  function openSheet(id){
-    editing = id ? S.entries.find(e => e.id===id) : null;
-    $('#sheetTitle').textContent = editing ? '記録を編集' : '支出を記録';
-    $('#fSave').textContent = editing ? '変更を保存' : '記録する';
+  // mode: 'entry'（支出）/ 'preset'（よく使う項目）/ 'recur'（固定費）
+  let mode = 'entry', editing = null, fCat = null, fSub = null, pickedPreset = null;
+  const TITLES = { entry:['支出を記録','記録を編集'], preset:['よく使う項目を追加','よく使う項目を編集'], recur:['固定費を追加','固定費を編集'] };
+  const DEL_LABEL = { entry:'この記録を削除', preset:'この項目を削除', recur:'この固定費を削除' };
+  function openSheet(m, item){
+    mode = m; editing = item || null; pickedPreset = null;
+    $('#sheetTitle').textContent = TITLES[m][editing ? 1 : 0];
+    $('#fSave').textContent = m==='entry' ? (editing ? '変更を保存' : '記録する') : '保存する';
     $('#fDelete').hidden = !editing;
+    $('#fDelete').textContent = DEL_LABEL[m];
+    $('#fNameRow').hidden = m==='entry';
+    $('#fDateRow').hidden = m!=='entry';
+    $('#recurFields').hidden = m!=='recur';
+    $('#fAsPreset').hidden = m!=='entry';
+    $('#fMemo').placeholder = m==='entry' ? 'なくてもOK' : '空欄なら名前を使います';
+    $('#fName').value = editing?.name || '';
     $('#fAmount').value = editing ? editing.amount.toLocaleString('ja-JP') : '';
-    $('#fDate').value = editing ? editing.date : todayStr();
-    $('#fMemo').value = editing ? editing.memo : '';
+    $('#fDate').value = m==='entry' && editing ? editing.date : todayStr();
+    $('#fMemo').value = editing?.memo || '';
+    $('#fFreq').value = editing?.freq || 'm1';
+    $('#fNext').value = editing?.next || todayStr();
     fCat = editing ? editing.catId : (S.cats[0]?.id || null);
     fSub = editing ? editing.subId : null;
-    paintChips();
+    paintPresetBar(); paintChips();
     $('#overlay').classList.add('on');
-    if(!editing) setTimeout(() => $('#fAmount').focus(), 50);
+    $('.sheet').scrollTop = 0;
+    if(!editing && m==='entry' && !S.presets.length) setTimeout(() => $('#fAmount').focus(), 50);
   }
+  function paintPresetBar(){
+    const show = mode==='entry' && !editing && S.presets.length;
+    $('#presetBar').hidden = !show;
+    if(!show) return;
+    $('#presetBar').innerHTML = S.presets.map(p => `<button class="pchip ${p.id===pickedPreset?'on':''}" data-p="${p.id}">
+      <span class="dot" style="background:${catOf(p.catId).color}"></span>${esc(p.name)}<small class="num">${yen(p.amount)}</small></button>`).join('');
+  }
+  $('#presetBar').onclick = e => {
+    const b = e.target.closest('[data-p]'); if(!b) return;
+    const p = S.presets.find(x => x.id===b.dataset.p); if(!p) return;
+    pickedPreset = p.id;
+    $('#fAmount').value = p.amount.toLocaleString('ja-JP');
+    $('#fMemo').value = p.memo || p.name;
+    fCat = p.catId; fSub = p.subId;
+    paintPresetBar(); paintChips();
+  };
   function paintChips(){
     if(!S.cats.find(c=>c.id===fCat)) fCat = S.cats[0]?.id || null;
     $('#fCats').innerHTML = S.cats.map(c => {
@@ -484,26 +588,88 @@ nav button.on svg{stroke:var(--ink);background:var(--butter);border-radius:12px;
   $('#fAmount').addEventListener('input', e => { const v=digits(e.target.value); e.target.value = v ? v.toLocaleString('ja-JP') : ''; });
   $('#fSave').onclick = () => {
     const amount = digits($('#fAmount').value);
+    const name = $('#fName').value.trim();
+    if(mode!=='entry' && !name){ toast('名前を入力してください'); $('#fName').focus(); return; }
     if(!amount){ toast('金額を入力してください'); $('#fAmount').focus(); return; }
     if(!fCat){ toast('大分類を選んでください'); return; }
-    const data = { amount, catId:fCat, subId:fSub, date:$('#fDate').value || todayStr(), memo:$('#fMemo').value.trim() };
-    if(editing) Object.assign(editing, data);
-    else S.entries.push({ id:uid(), ...data, createdAt:new Date().toISOString() });
-    if(save()){ closeSheet(); toast(editing ? '変更を保存しました' : `${yen(amount)} を記録しました`); render(); }
+    const base = { amount, catId:fCat, subId:fSub, memo:$('#fMemo').value.trim() };
+    const wasEditing = !!editing;
+
+    if(mode==='entry'){
+      const data = { ...base, date:$('#fDate').value || todayStr() };
+      if(editing) Object.assign(editing, data);
+      else S.entries.push({ id:uid(), ...data, createdAt:new Date().toISOString() });
+      if(save()){ closeSheet(); toast(wasEditing ? '変更を保存しました' : `${yen(amount)} を記録しました`); render(); }
+      return;
+    }
+    if(mode==='preset'){
+      if(editing) Object.assign(editing, { name, ...base });
+      else S.presets.push({ id:uid(), name, ...base });
+      if(save()){ closeSheet(); toast(wasEditing ? '変更を保存しました' : `「${name}」を登録しました`); renderSettings(); }
+      return;
+    }
+    // recur
+    const next = $('#fNext').value;
+    if(!next){ toast('次回の日付を選んでください'); return; }
+    const rule = { name, ...base, freq:$('#fFreq').value, next, day:Number(next.slice(8)) };
+    const due = countDue(rule, todayStr());
+    if(due && !confirm(`次回の日付が今日以前なので、今日までの${due}件をすぐに記録します。よろしいですか？\n（すでに手入力している場合は、次回の日付を先の日にしてください）`)) return;
+    if(editing) Object.assign(editing, rule);
+    else S.recurring.push({ id:uid(), ...rule });
+    save(); closeSheet();
+    if(!runRecurring()) toast(wasEditing ? '変更を保存しました' : `「${name}」を登録しました`);
+    renderSettings(); render();
   };
   $('#fDelete').onclick = () => {
-    if(!editing || !confirm('この記録を削除しますか？')) return;
-    S.entries = S.entries.filter(e => e !== editing);
-    if(save()){ closeSheet(); toast('削除しました'); render(); }
+    if(!editing) return;
+    if(mode==='entry'){
+      if(!confirm('この記録を削除しますか？')) return;
+      S.entries = S.entries.filter(e => e !== editing);
+    }else if(mode==='preset'){
+      if(!confirm(`「${editing.name}」を削除しますか？`)) return;
+      S.presets = S.presets.filter(x => x !== editing);
+    }else{
+      if(!confirm(`「${editing.name}」を削除しますか？\nこれまでに記録された分はそのまま残ります。`)) return;
+      S.recurring = S.recurring.filter(x => x !== editing);
+    }
+    if(save()){ closeSheet(); toast('削除しました'); render(); renderSettings(); }
+  };
+  $('#fAsPreset').onclick = () => {
+    const amount = digits($('#fAmount').value);
+    if(!amount || !fCat){ toast('先に金額と分類を入れてください'); return; }
+    const memo = $('#fMemo').value.trim();
+    const name = (prompt('よく使う項目の名前', memo || catOf(fCat).name) || '').trim();
+    if(!name) return;
+    S.presets.push({ id:uid(), name, amount, catId:fCat, subId:fSub, memo });
+    if(save()){ toast(`「${name}」を登録しました`); paintPresetBar(); }
   };
   function closeSheet(){ $('#overlay').classList.remove('on'); editing = null; }
   $('#closeSheet').onclick = closeSheet;
   $('#overlay').addEventListener('click', e => { if(e.target.id==='overlay') closeSheet(); });
-  $('#fab').onclick = () => openSheet(null);
+  $('#fab').onclick = () => openSheet('entry');
 
   // ---------- settings ----------
   const openPalettes = new Set();
+  function itemRow(kind, x, sub){
+    const c = catOf(x.catId), s = subOf(c, x.subId);
+    return `<button class="item" data-${kind}="${x.id}"><span class="dot" style="background:${c.color}"></span>
+      <span class="txt"><b>${esc(x.name)}</b><small>${esc(c.name)}${s ? '・'+esc(s.name) : ''}${sub ? '　'+sub : ''}</small></span>
+      <span class="num">${yen(x.amount)}</span></button>`;
+  }
+  function renderLists(){
+    $('#recurList').innerHTML = S.recurring.slice().sort((a,b)=>a.next.localeCompare(b.next)).map(r => {
+      const d = new Date(r.next+'T00:00:00');
+      return itemRow('recur', r, `${FREQ_LABEL[r.freq]}・次回 ${d.getMonth()+1}/${d.getDate()}`);
+    }).join('');
+    $('#presetList').innerHTML = S.presets.map(p => itemRow('preset', p, '')).join('');
+  }
+  $('#recurList').onclick = e => { const b=e.target.closest('[data-recur]'); if(b) openSheet('recur', S.recurring.find(x=>x.id===b.dataset.recur)); };
+  $('#presetList').onclick = e => { const b=e.target.closest('[data-preset]'); if(b) openSheet('preset', S.presets.find(x=>x.id===b.dataset.preset)); };
+  $('#addRecur').onclick = () => openSheet('recur');
+  $('#addPreset').onclick = () => openSheet('preset');
+
   function renderSettings(){
+    renderLists();
     $('#budgetTotal').value = S.budget ? S.budget.toLocaleString('ja-JP') : '';
     $('#catEditor').innerHTML = S.cats.map((c,i) => `
       <div class="catedit" data-id="${c.id}">
@@ -594,26 +760,76 @@ nav button.on svg{stroke:var(--ink);background:var(--butter);border-radius:12px;
     return '\uFEFF' + ['日付,大分類,中分類,金額,メモ', ...rows].join('\r\n');
   }
   $('#exportJson').onclick = async () => {
-    const data = JSON.stringify({ app:'kakeibo', version:2, exportedAt:new Date().toISOString(), entries:S.entries, cats:S.cats, budget:S.budget }, null, 2);
+    const data = JSON.stringify({ app:'kakeibo', version:3, exportedAt:new Date().toISOString(), entries:S.entries, cats:S.cats, budget:S.budget, presets:S.presets, recurring:S.recurring }, null, 2);
     if(await deliver(`家計簿バックアップ_${stamp()}.json`, data, 'application/json')){ S.lastBackup = new Date().toISOString(); save(); renderSettings(); }
   };
   $('#exportCsvMonth').onclick = () => { const l=monthList(); if(!l.length) return toast('この月の記録がありません'); deliver(`家計簿_${ym()}.csv`, toCsv(l), 'text/csv'); };
   $('#exportCsvAll').onclick = () => { if(!S.entries.length) return toast('記録がありません'); deliver(`家計簿_全期間_${stamp()}.csv`, toCsv(S.entries), 'text/csv'); };
+  function parseCsv(text){
+    const rows = []; let row = [], f = '', q = false;
+    for(let i=0;i<text.length;i++){
+      const ch = text[i];
+      if(q){
+        if(ch==='"'){ if(text[i+1]==='"'){ f+='"'; i++; } else q=false; }
+        else f += ch;
+      }else if(ch==='"') q = true;
+      else if(ch===','){ row.push(f); f=''; }
+      else if(ch==='\n' || ch==='\r'){
+        if(ch==='\r' && text[i+1]==='\n') i++;
+        row.push(f); rows.push(row); row=[]; f='';
+      }else f += ch;
+    }
+    if(f || row.length){ row.push(f); rows.push(row); }
+    return rows.filter(r => r.some(v => v.trim()));
+  }
+  const loose = t => String(t).replace(/[^\p{L}\p{N}]/gu, '');
+  function importCsv(text){
+    const rows = parseCsv(text.replace(/^\uFEFF/, ''));
+    if(rows.length && rows[0][0].trim()==='日付') rows.shift();
+    const keyOf = (date, cn, sn, amt, memo) => [date, cn, sn, amt, memo].join('\u0001');
+    const have = new Map();
+    S.entries.forEach(e => { const c=catOf(e.catId), s=subOf(c,e.subId); const k=keyOf(e.date, c.name, s?s.name:'', e.amount, e.memo||''); have.set(k,(have.get(k)||0)+1); });
+    let added = 0, skipped = 0, bad = 0; const newCats = [];
+    rows.forEach(r => {
+      let [date='', cn='', sn='', amt='', memo=''] = r.map(v => v.trim());
+      const m = date.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+      const amount = digits(amt);
+      if(!m || !amount){ bad++; return; }
+      date = `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+      cn = cn || 'その他';
+      let cat = S.cats.find(c => c.name===cn) || S.cats.find(c => loose(c.name) && loose(c.name)===loose(cn));
+      if(!cat){ cat = { id:uid(), name:cn, color:PALETTE[S.cats.length % PALETTE.length].c, budget:0, subs:[] }; S.cats.push(cat); newCats.push(cn); }
+      let sub = null;
+      if(sn){ sub = cat.subs.find(s => s.name===sn) || cat.subs.find(s => loose(s.name)===loose(sn)); if(!sub){ sub = { id:uid(), name:sn }; cat.subs.push(sub); } }
+      const k = keyOf(date, cat.name, sub?sub.name:'', amount, memo);
+      if(have.get(k)){ have.set(k, have.get(k)-1); skipped++; return; }
+      S.entries.push({ id:uid(), date, amount, catId:cat.id, subId:sub?sub.id:null, memo, createdAt:new Date().toISOString() });
+      added++;
+    });
+    save(); render(); renderSettings();
+    alert(`CSVを読み込みました\n\n追加：${added}件` + (skipped ? `\nすでにあるため飛ばした記録：${skipped}件` : '') + (bad ? `\n読み取れなかった行：${bad}件` : '') + (newCats.length ? `\n新しく作った大分類：${newCats.join('、')}` : ''));
+  }
   $('#importBtn').onclick = () => $('#importFile').click();
   $('#importFile').onchange = async e => {
     const f = e.target.files[0]; e.target.value=''; if(!f) return;
+    const text = await f.text();
+    if(/\.csv$/i.test(f.name) || !text.trim().startsWith('{')){
+      try{ importCsv(text); }catch(err){ toast('CSVを読み込めませんでした'); }
+      return;
+    }
     try{
-      const d = JSON.parse(await f.text());
+      const d = JSON.parse(text);
       if(!Array.isArray(d.entries)) throw 0;
-      if(d.version === 2 && Array.isArray(d.cats)){
+      if(Array.isArray(d.cats)){
         const replace = !S.entries.length || confirm(`${d.entries.length}件の記録が見つかりました。\n\nOK：今のデータを置き換える\nキャンセル：今のデータに追加する`);
-        if(replace){ S.entries = d.entries; S.cats = d.cats; S.budget = d.budget || 0; pastelize(); }
-        else{
-          const ids = new Set(S.entries.map(x=>x.id));
-          d.cats.forEach(c => { if(!S.cats.find(x=>x.id===c.id)) S.cats.push(c); });
-          d.entries.forEach(x => { if(!ids.has(x.id)) S.entries.push(x); });
+        if(replace){
+          S.entries = d.entries; S.cats = d.cats; S.budget = d.budget || 0;
+          S.presets = d.presets || []; S.recurring = d.recurring || []; pastelize();
+        }else{
+          const addNew = (to, from) => (from||[]).forEach(x => { if(!to.find(y=>y.id===x.id)) to.push(x); });
+          addNew(S.cats, d.cats); addNew(S.entries, d.entries); addNew(S.presets, d.presets); addNew(S.recurring, d.recurring);
         }
-        save(); render(); toast('バックアップを読み込みました');
+        normalize(); save(); runRecurring(); render(); renderSettings(); toast('バックアップを読み込みました');
       }else{
         const n = mergeLegacy(d.entries); save(); render(); toast(`旧バージョンの支出${n}件を取り込みました`);
       }
@@ -640,7 +856,9 @@ nav button.on svg{stroke:var(--ink);background:var(--butter);border-radius:12px;
     renderHome(); renderHistory();
   }
 
-  load(); render(); renderSettings();
+  load(); normalize(); runRecurring(); render(); renderSettings();
+  // アプリを開き直したとき（バックグラウンドから戻ったとき）にも固定費をチェック
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState==='visible' && runRecurring()){ render(); renderSettings(); } });
   if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();
 </script>
